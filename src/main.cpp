@@ -23,11 +23,11 @@
 //   return ctime(&now);
 // }
 
-template<itch_t __code>
-itch_message<__code> parse(char* message){
-  auto ret = itch_message<__code>::parse(message);
-  return ret;
-}
+// template<itch_t __code>
+// itch_message<__code> parse(char* message){
+//   auto ret = itch_message<__code>::parse(message);
+//   return ret;
+// }
 
 template <itch_t __code>
 class PROCESS
@@ -35,7 +35,7 @@ class PROCESS
  public:
   static itch_message<__code> parse(char* msg)
   {
-    itch_message<__code> ret = itch_message<__code>::parse(msg + 1);
+    itch_message<__code> ret = itch_message<__code>::parse(msg);
     // __buf->advance(netlen<__code>);
     return ret;
   }
@@ -86,9 +86,13 @@ int main()
     {
 
 
-      char recv_buf[256];
+      char recv_buf[64];
       udp::endpoint remote_endpoint;
       socket.receive_from(asio::buffer(recv_buf), remote_endpoint);
+      for(auto c:recv_buf){
+        std::cout << c << " ";
+      }
+      std::cout << std::endl;
 
       // get msg type (see types.hpp)
       itch_t const msg_type = itch_t(recv_buf[0]);
@@ -101,9 +105,10 @@ int main()
           //   ++npkts;
           // }
           auto const pkt = PROCESS<itch_t::ADD_ORDER>::parse(recv_buf);
+          std::cout << uint64_t(pkt.timestamp) << std::endl;
           std::cout << uint64_t(pkt.oid) << std::endl;
-          std::cout << uint64_t(pkt.price) << std::endl;
-          std::cout << uint64_t(std::numeric_limits<int32_t>::max()) << std::endl;
+          std::cout << uint32_t(pkt.price) << std::endl;
+          std::cout << uint32_t(pkt.qty) << std::endl;
           assert(uint64_t(pkt.oid) <
                 uint64_t(std::numeric_limits<int32_t>::max()));
   #if BUILD_BOOK

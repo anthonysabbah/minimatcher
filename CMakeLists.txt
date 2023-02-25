@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 find_package(Boost REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 
-add_compile_options(-O3 -march=native)
+add_compile_options(-O3)
 add_executable(minimatcher src/main.cpp)
 add_executable(testclient test/udp_client.cpp)
 add_library(asio INTERFACE)

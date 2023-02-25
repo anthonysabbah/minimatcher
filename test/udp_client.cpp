@@ -15,7 +15,24 @@
 
 using asio::ip::udp;
 
-enum { max_length = 36 };
+enum { max_length = 64 };
+
+struct HexCharStruct
+{
+  unsigned char c;
+  HexCharStruct(unsigned char _c) : c(_c) { }
+};
+
+inline std::ostream& operator<<(std::ostream& o, const HexCharStruct& hs)
+{
+  return (o << std::hex << (int)hs.c);
+}
+
+inline HexCharStruct hex(unsigned char _c)
+{
+  return HexCharStruct(_c);
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -39,19 +56,25 @@ int main(int argc, char* argv[])
     // char request[max_length];
     // std::cin.getline(request, max_length);
     // test message
-    char request[max_length] = {
+    std::array<uint8_t, max_length> request = {
     'A',                                                             // messageType: OrderAdded
-    '\x00', '\x45',                                                  // order book id: 69
-    '\x00', '\x00',                                                  // tracking number: left empty cos not read by the matching engine at the moment
-    '\x00', '\x00', '\x00', '\x00', '\x00', '\x42', // timestamp: 566
-    '\x00', '\x00', '\x00', '\x00', '\x00', '\x00', '\x00', '\x47', // orderNumber: 71
+    0x00, 0x45,                                                  // order book id: 69
+    0x00, 0x00,                                                  // tracking number: left empty cos not read by the matching engine at the moment
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x42, // timestamp: 66
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, // orderNumber: 71
     'B',                                                            // side: Buy
-    '\x00', '\x00', '\x00', '\xCC',                                 // quantity: 204
-    '\x00', '\x00', '\x00', '\x00', '\x00', '\x00', '\x00', '\x42', // stock ticker: this isn't parsed by the engine either
-    '\x00', '\x00', '\x00', '\x46'                                  // price: 70
+    0x00, 0x00, 0x00, 0x45,                                 // quantity: 204
+    'A', 'P', 'P', 'L', 0x20, 0x20, 0x20, 0x20, // stock ticker: this isn't parsed by the engine either
+    0x00, 0x00, 0x00, 0x46                                  // price: 70
     };
-    std::cout << request << std::endl;
-    size_t request_length = std::strlen(request);
+    // std::cout << request << std::endl;
+    size_t request_length = request.size();
+
+    for(auto a: request){
+      std::cout << (char)a << " ";
+    }
+    std::cout << std::endl;
+
     s.send_to(asio::buffer(request, request_length), *endpoints.begin());
 
     char reply[max_length];
@@ -60,13 +83,13 @@ int main(int argc, char* argv[])
         asio::buffer(reply, max_length), sender_endpoint);
     std::cout << "Reply is: ";
 
-    std::ostringstream os;
-    for(auto c:reply){
-      os << std::hex << c;
-    }
-    std::string mystring = os.str();
+    // std::ostringstream os;
+    // for(auto c:reply){
+    //   os << std::hex << c;
+    // }
+    // std::string mystring = os.str();
 
-    std::cout.write(mystring.c_str(), reply_length);
+    std::cout.write(reply, reply_length);
     std::cout << "\n";
   }
   catch (std::exception& e)

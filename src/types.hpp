@@ -1,6 +1,16 @@
 #include <cstdint>
-#include <endian.h>
 #include <string.h>
+#include <stdio.h>
+
+#if __APPLE__
+  #include <machine/endian.h>
+  
+  #define be64toh(x) ntohll(x)
+  #define be32toh(x) ntohl(x)
+  #define be16toh(x) ntohs(x)
+#else
+  #include <endian.h>
+#endif
 /*
   Some of this code is based off of https://github.com/charles-cooper/itch-order-book/blob/master/itch.h
   I might've removed some msg types bcos they probably won't be used.
@@ -146,7 +156,6 @@ struct itch_message<MSG::ADD_ORDER> {
   BUY_SELL const buy;
   static itch_message parse(char const *ptr)
   {
-    // TODO: shouldn't read_timestamp use read_eight()? (see https://www.onixs.biz/itch-protocol.html)
     printf("MSG>> parsing as an ADD ORDER\n");
     return add_order_t(read_timestamp(ptr + 5), read_oid(ptr + 11), 
                        read_price(ptr + 32), read_qty(ptr + 20),
