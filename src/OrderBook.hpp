@@ -6,6 +6,7 @@
 // this is a neat trick to replace how casts are normally done
 #define MKPRIMITIVE(__x) ((std::underlying_type<decltype(__x)>::type)__x)
 
+#define TRACE 1
 
 enum class sprice_t : int32_t {};
 bool constexpr is_bid(sprice_t const x) { return int32_t(x) >= 0; }

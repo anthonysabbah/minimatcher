@@ -105,10 +105,6 @@ int main()
           //   ++npkts;
           // }
           auto const pkt = PROCESS<itch_t::ADD_ORDER>::parse(recv_buf);
-          std::cout << uint64_t(pkt.timestamp) << std::endl;
-          std::cout << uint64_t(pkt.oid) << std::endl;
-          std::cout << uint32_t(pkt.price) << std::endl;
-          std::cout << uint32_t(pkt.qty) << std::endl;
           assert(uint64_t(pkt.oid) <
                 uint64_t(std::numeric_limits<int32_t>::max()));
   #if BUILD_BOOK

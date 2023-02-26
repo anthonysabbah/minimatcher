@@ -156,7 +156,6 @@ struct itch_message<MSG::ADD_ORDER> {
   BUY_SELL const buy;
   static itch_message parse(char const *ptr)
   {
-    printf("MSG>> parsing as an ADD ORDER\n");
     return add_order_t(read_timestamp(ptr + 5), read_oid(ptr + 11), 
                        read_price(ptr + 32), read_qty(ptr + 20),
                        read_locate(ptr + 1), BUY_SELL(*(ptr + 19)));
