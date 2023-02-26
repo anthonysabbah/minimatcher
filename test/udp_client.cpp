@@ -58,15 +58,23 @@ int main(int argc, char* argv[])
     // test message
     std::array<uint8_t, max_length> request = {
     'A',                                                             // messageType: OrderAdded
-    0x00, 0x45,                                                  // order book id: 69
+    0x00, 0x10,                                                  // order book id: 69
     0x00, 0x00,                                                  // tracking number: left empty cos not read by the matching engine at the moment
     0x00, 0x00, 0x00, 0x00, 0x00, 0x42, // timestamp: 66
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, // orderNumber: 71
     'B',                                                            // side: Buy
-    0x00, 0x00, 0x00, 0x45,                                 // quantity: 204
+    0x00, 0x00, 0x00, 0x20,                                 // quantity: 204
     'A', 'P', 'P', 'L', 0x20, 0x20, 0x20, 0x20, // stock ticker: this isn't parsed by the engine either
-    0x00, 0x00, 0x00, 0x46                                  // price: 70
+    0x00, 0x00, 0x00, 0x05                                  // price: 70
     };
+
+    // std::array<uint8_t, max_length> request = {
+    // 'D',                                                             // messageType: OrderDeleted
+    // 0x00, 0x15,                                                  // order book id: 69
+    // 0x00, 0x00,                                                  // tracking number: left empty cos not read by the matching engine at the moment
+    // 0x00, 0x00, 0x00, 0x00, 0x00, 0x43, // timestamp: 78
+    // 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, // orderNumber: 0
+    // };
     // std::cout << request << std::endl;
     size_t request_length = request.size();
 

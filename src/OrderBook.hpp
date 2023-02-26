@@ -22,7 +22,8 @@ enum class level_id_t : uint32_t {};
 enum class order_id_t : uint32_t {};
 
 /* 
-An implementation of a pool allocator;
+  An implementation of a pool allocator (see https://en.wikipedia.org/wiki/Memory_pool)
+  We use vectors for both the mem. pool and the "free block list"
 */
 template <class T, typename ptr_t, size_t INIT_SIZE>
 class PoolAllocator{
@@ -77,11 +78,23 @@ class Level
   Level() {}
 };
 
-typedef struct order {
-  qty_t m_qty;
-  level_id_t level_idx;
-  book_id_t book_idx;
-} order_t;
+/*
+  Originally, a struct was used to represent the order, 
+  but now we use a class (see OrderBook::order_vector in OrderBook for more info)
+*/
+
+class Order {
+  public:
+    Order() {}
+    Order(qty_t __qty, level_id_t __level_idx, book_id_t __book_idx) {
+    m_qty = __qty;
+    level_idx = __level_idx;
+    book_idx = __book_idx;
+    }
+    qty_t m_qty;
+    level_id_t level_idx;
+    book_id_t book_idx;
+};
 
 class PriceLevel
 {
@@ -93,30 +106,6 @@ class PriceLevel
   }
   sprice_t m_price;
   level_id_t m_ptr;
-};
-
-template <class T>
-class OrderMap{
-  public:
-  std::vector<T> m_data;
-  size_t m_size;
-  void reserve(order_id_t const oid)
-  {
-    size_t const idx = size_t(oid);
-    if (idx >= m_data.size()) {
-      m_data.resize(idx + 1);
-    }
-  }
-  T &operator[](order_id_t const oid)
-  {
-    size_t const idx = size_t(oid);
-    return m_data[idx];
-  }
-  T *get(order_id_t const oid)
-  {
-    size_t const idx = size_t(oid);
-    return &m_data[idx];
-  }
 };
 
 // operators for custom defined types
@@ -140,11 +129,17 @@ class OrderBook
  public:
   static constexpr size_t MAX_BOOKS = 1 << 14;
   static constexpr size_t NUM_LEVELS = 1 << 20;
+  static constexpr size_t NUM_ORDERS = 1 << 20;
   static OrderBook *s_books;  // can we allocate this on the stack?
-  static OrderMap<order_t> oid_map;
+  /*
+    since we need dynamic mem allocation bcos static mem is wasteful and limiting for order id, 
+    we use a pool allocator instead of a vector with no resizes.
+  */ 
+  using order_vector = PoolAllocator<Order, order_id_t, NUM_ORDERS>;
   using level_vector = PoolAllocator<Level, level_id_t, NUM_LEVELS>;
   using sorted_levels_t = std::vector<PriceLevel>;
   // A global allocator for all the price levels allocated by all the books.
+  static order_vector oid_map;
   static level_vector s_levels;
   sorted_levels_t m_bids;
   sorted_levels_t m_offers;
@@ -152,16 +147,18 @@ class OrderBook
   // using level_ptr_t = level_vector::__ptr;
   using level_ptr_t = level_id_t;
 
-  static void add_order(order_id_t const oid, book_id_t const book_idx,
+  static void add_order(book_id_t const book_idx,
                         sprice_t const price, qty_t const qty)
   {
+    // oid_map.reserve(oid);
+    order_id_t oid = oid_map.alloc();
+    Order *order = oid_map.get(oid);
+    order->m_qty = qty;
+    order->book_idx = book_idx;
+
 #if TRACE
     printf("ADD %lu, %u, %d, %u", oid, book_idx, price, qty);
 #endif  // TRACE
-    oid_map.reserve(oid);
-    order *order = oid_map.get(oid);
-    order->m_qty = qty;
-    order->book_idx = book_idx;
 
     s_books[size_t(book_idx)].ADD_ORDER(order, price, qty);
 #if TRACE
@@ -169,7 +166,7 @@ class OrderBook
     printf(", %u, %u \n", lvl, s_books[size_t(book_idx)].s_levels[lvl].m_qty);
 #endif  // TRACE
   }
-  void ADD_ORDER(order_t *order, sprice_t const price, qty_t const qty)
+  void ADD_ORDER(Order *order, sprice_t const price, qty_t const qty)
   {
     sorted_levels_t *sorted_levels = is_bid(price) ? &m_bids : &m_offers;
     // search descending for the price
@@ -201,19 +198,19 @@ class OrderBook
 #if TRACE
     printf("DELETE %lu\n", oid);
 #endif  // TRACE
-    order_t *order = oid_map.get(oid);
-    s_books[size_t(order->book_idx)].DELETE_ORDER(order);
+    Order *order = oid_map.get(oid);
+    s_books[size_t(order->book_idx)].DELETE_ORDER(order, oid);
   }
   static void cancel_order(order_id_t const oid, qty_t const qty)
   {
 #if TRACE
     printf("REDUCE %lu, %u\n", oid, qty);
 #endif  // TRACE
-    order_t *order = oid_map.get(oid);
+    Order *order = oid_map.get(oid);
     s_books[size_t(order->book_idx)].REDUCE_ORDER(order, qty);
   }
   // shared between cancel(aka partial cancel aka reduce) and execute
-  void REDUCE_ORDER(order_t *order, qty_t const qty)
+  void REDUCE_ORDER(Order *order, qty_t const qty)
   {
     auto tmp = MKPRIMITIVE(s_levels[order->level_idx].m_qty);
     tmp -= MKPRIMITIVE(qty);
@@ -224,7 +221,7 @@ class OrderBook
     order->m_qty = qty_t(tmp);
   }
   // shared between delete and execute
-  void DELETE_ORDER(order_t *order)
+  void DELETE_ORDER(Order *order, order_id_t oid)
   {
     // TODO: is this the best way to do this?
     assert(MKPRIMITIVE(s_levels[order->level_idx].m_qty) >=
@@ -245,38 +242,39 @@ class OrderBook
       }
       s_levels.free(order->level_idx);
     }
+    oid_map.free(oid);
   }
   static void execute_order(order_id_t const oid, qty_t const qty)
   {
 #if TRACE
     printf("EXECUTE %lu %u\n", oid, qty);
 #endif  // TRACE
-    order_t *order = oid_map.get(oid);
+    Order *order = oid_map.get(oid);
     OrderBook *book = &s_books[MKPRIMITIVE(order->book_idx)];
 
     if (qty == order->m_qty) {
-      book->DELETE_ORDER(order);
+      book->DELETE_ORDER(order, oid);
     } else {
       book->REDUCE_ORDER(order, qty);
     }
   }
-  static void replace_order(order_id_t const old_oid, order_id_t const new_oid,
+  static void replace_order(order_id_t const oid,
                             qty_t const new_qty, sprice_t new_price)
   {
 #if TRACE
-    printf("REPLACE %lu %lu %d %u\n", old_oid, new_oid, new_price, new_qty);
+    printf("REPLACE %lu %lu %d %u\n", oid, new_price, new_qty);
 #endif  // TRACE
-    order_t *order = oid_map.get(old_oid);
+    Order *order = oid_map.get(oid);
     OrderBook *book = &s_books[MKPRIMITIVE(order->book_idx)];
     bool const bid = is_bid(book->s_levels[order->level_idx].m_price);
-    book->DELETE_ORDER(order);
+    book->DELETE_ORDER(order, oid);
     if (!bid) {
       new_price = sprice_t(-1 * MKPRIMITIVE(new_price));
     }
-    book->add_order(new_oid, order->book_idx, new_price, new_qty);
+    book->add_order(order->book_idx, new_price, new_qty);
   }
 };
 
-OrderMap<order_t> OrderBook::oid_map = OrderMap<order_t>();
+OrderBook::order_vector OrderBook::oid_map = order_vector();
 OrderBook *OrderBook::s_books = new OrderBook[OrderBook::MAX_BOOKS];
 OrderBook::level_vector OrderBook::s_levels = level_vector();

@@ -104,7 +104,7 @@ enum class oid_t : uint64_t {};
 enum class price_t : uint32_t {};
 enum class qty_t : uint32_t {};
 
-// all this stuff here is for parsing 
+// all this stuff here is for parsing bytes
 static uint64_t read_eight(char const *src)
 {
   return be64toh(*(uint64_t const *)src);
@@ -159,5 +159,17 @@ struct itch_message<MSG::ADD_ORDER> {
     return add_order_t(read_timestamp(ptr + 5), read_oid(ptr + 11), 
                        read_price(ptr + 32), read_qty(ptr + 20),
                        read_locate(ptr + 1), BUY_SELL(*(ptr + 19)));
+  }
+};
+
+using order_delete_t = itch_message<MSG::DELETE_ORDER>;
+template <>
+struct itch_message<MSG::DELETE_ORDER> {
+  itch_message(oid_t __o, timestamp_t __t) : oid(__o), timestamp(__t) {}
+  oid_t const oid;
+  timestamp_t const timestamp;
+  static itch_message parse(char const *ptr)
+  {
+    return itch_message(read_oid(ptr + 11), read_timestamp(ptr + 5));
   }
 };

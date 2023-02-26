@@ -11,23 +11,9 @@
 #include <ctime>
 #include <iostream>
 #include <string>
-// #include <boost/array.hpp>
 #include <asio.hpp>
 
 #include "OrderBook.hpp"
-
-// std::string make_daytime_string()
-// {
-//   using namespace std; // For time_t, time and ctime;
-//   time_t now = time(0);
-//   return ctime(&now);
-// }
-
-// template<itch_t __code>
-// itch_message<__code> parse(char* message){
-//   auto ret = itch_message<__code>::parse(message);
-//   return ret;
-// }
 
 template <itch_t __code>
 class PROCESS
@@ -36,7 +22,6 @@ class PROCESS
   static itch_message<__code> parse(char* msg)
   {
     itch_message<__code> ret = itch_message<__code>::parse(msg);
-    // __buf->advance(netlen<__code>);
     return ret;
   }
 };
@@ -65,13 +50,6 @@ int main()
 #if !BUILD_BOOK
   size_t nadds(0);
   uint64_t maxoid(0);
-#else
-  // OrderBook::oid_map.max_load_factor(0.5);
-  OrderBook::oid_map.reserve(order_id_t(1000 * 2));  // the first number
-                                                          // is the empirically
-                                                          // largest oid seen.
-                                                          // multiply by 2 for
-                                                          // good measure
 #endif
 
   try
@@ -108,7 +86,7 @@ int main()
           assert(uint64_t(pkt.oid) <
                 uint64_t(std::numeric_limits<int32_t>::max()));
   #if BUILD_BOOK
-          OrderBook::add_order(order_id_t(pkt.oid), book_id_t(pkt.stock_locate),
+          OrderBook::add_order(book_id_t(pkt.stock_locate),
                                 mksigned(pkt.price, pkt.buy), pkt.qty);
   #else
           int64_t oid = int64_t(pkt.oid);
@@ -120,6 +98,15 @@ int main()
   #endif
           break;
         }
+
+        case (itch_t::DELETE_ORDER): {
+          auto const pkt = PROCESS<itch_t::DELETE_ORDER>::parse(recv_buf);
+  #if BUILD_BOOK
+          OrderBook::delete_order(order_id_t(pkt.oid));
+  #endif
+          break;
+        }
+
         // DO_CASE(itch_t::DELETE_ORDER);
         default:{
           printf("woopsy");
@@ -127,7 +114,6 @@ int main()
       }
 
       // I'll add checks for sender later
-      // process
 
       asio::error_code ignored_error;
       socket.send_to(asio::buffer(recv_buf),
