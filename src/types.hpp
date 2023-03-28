@@ -2,6 +2,9 @@
 #include <string.h>
 #include <stdio.h>
 
+#ifndef ORDERTYPES
+#define ORDERTYPES
+
 #if __APPLE__
   #include <machine/endian.h>
   
@@ -101,8 +104,26 @@ struct itch_message {
 enum class BUY_SELL : char { BUY = 'B', SELL = 'S' };
 enum class timestamp_t : uint64_t {};
 enum class oid_t : uint64_t {};
+enum class sprice_t : int32_t {};
 enum class price_t : uint32_t {};
+enum class scrty_t : uint32_t {};
 enum class qty_t : uint32_t {};
+
+
+struct Order{
+  oid_t oid;
+  scrty_t securityId; // security identifier
+  qty_t qty;
+  sprice_t price; // TODO: figure out the best datatype for these sorts of things (for speed)
+//  int timestamp; // timestamp in nanoseconds from midnight
+};
+
+struct CmpOrderQty{
+  bool operator()(const Order* lhs, const Order* rhs) const
+  {
+      return lhs->qty < rhs->qty;
+  }
+};
 
 // all this stuff here is for parsing bytes
 static uint64_t read_eight(char const *src)
@@ -173,3 +194,5 @@ struct itch_message<MSG::DELETE_ORDER> {
     return itch_message(read_oid(ptr + 11), read_timestamp(ptr + 5));
   }
 };
+
+#endif // ORDERTYPES

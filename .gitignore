@@ -2,6 +2,11 @@
 minimatcher
 testclient
 
+# test stuff, misc
+tests_include*
+DartConfiguration.tcl
+*.cmake
+
 ##### Windows
 # Windows thumbnail cache files
 Thumbs.db

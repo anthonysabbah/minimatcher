@@ -56,6 +56,10 @@ int main(int argc, char* argv[])
     // char request[max_length];
     // std::cin.getline(request, max_length);
     // test message
+
+    // for(;;){
+
+    // }
     std::array<uint8_t, max_length> request = {
     'A',                                                             // messageType: OrderAdded
     0x00, 0x10,                                                  // order book id: 69
