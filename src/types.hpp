@@ -1,3 +1,5 @@
+#include <_types/_uint32_t.h>
+#include <_types/_uint64_t.h>
 #include <cstdint>
 #include <string.h>
 #include <stdio.h>
@@ -102,19 +104,19 @@ struct itch_message {
 
 // useful types
 enum class BUY_SELL : char { BUY = 'B', SELL = 'S' };
-enum class timestamp_t : uint64_t {};
-enum class oid_t : uint64_t {};
-enum class sprice_t : int32_t {};
-enum class price_t : uint32_t {};
-enum class scrty_t : uint32_t {};
-enum class qty_t : uint32_t {};
+// enum class timestamp_t : uint64_t {};
+// enum class oid_t : uint64_t {};
+// enum class sprice_t : int32_t {};
+// enum class price_t : uint32_t {};
+// enum class scrty_t : uint32_t {};
+// enum class qty_t : uint32_t {};
 
 
 struct Order{
-  oid_t oid;
-  scrty_t securityId; // security identifier
-  qty_t qty;
-  sprice_t price; // TODO: figure out the best datatype for these sorts of things (for speed)
+  uint64_t oid;
+  uint32_t securityId; // security identifier
+  uint32_t qty;
+  int32_t price; // TODO: figure out the best datatype for these sorts of things (for speed)
 //  int timestamp; // timestamp in nanoseconds from midnight
 };
 
@@ -125,74 +127,74 @@ struct CmpOrderQty{
   }
 };
 
-// all this stuff here is for parsing bytes
-static uint64_t read_eight(char const *src)
-{
-  return be64toh(*(uint64_t const *)src);
-}
-static uint64_t read_six(char const *src)
-{
-  uint64_t ret;
-  char *pun = (char *)&ret;
-  // it's not clear whether this is faster than six separate char assignments
-  memcpy(pun, src, 6);
-  return (be64toh(ret) >> 16);
-}
-static uint32_t read_four(char const *src)
-{
-  return be32toh(*(uint32_t const *)src);
-}
-static uint16_t read_two(char const *src)
-{
-  return be16toh(*(uint16_t const *)src);
-}
+// // all this stuff here is for parsing bytes
+// static uint64_t read_eight(char const *src)
+// {
+//   return be64toh(*(uint64_t const *)src);
+// }
+// static uint64_t read_six(char const *src)
+// {
+//   uint64_t ret;
+//   char *pun = (char *)&ret;
+//   // it's not clear whether this is faster than six separate char assignments
+//   memcpy(pun, src, 6);
+//   return (be64toh(ret) >> 16);
+// }
+// static uint32_t read_four(char const *src)
+// {
+//   return be32toh(*(uint32_t const *)src);
+// }
+// static uint16_t read_two(char const *src)
+// {
+//   return be16toh(*(uint16_t const *)src);
+// }
 
-static timestamp_t read_timestamp(char const *src)
-{
-  return timestamp_t(read_six(src));
-}
-static oid_t read_oid(char const *src) { return oid_t(read_eight(src)); }
-static price_t read_price(char const *src) { return price_t(read_four(src)); }
-static qty_t read_qty(char const *src) { return qty_t(read_four(src)); }
-static uint16_t read_locate(char const *src) { return read_two(src); }
+// static timestamp_t read_timestamp(char const *src)
+// {
+//   return timestamp_t(read_six(src));
+// }
+// static oid_t read_oid(char const *src) { return oid_t(read_eight(src)); }
+// static price_t read_price(char const *src) { return price_t(read_four(src)); }
+// static qty_t read_qty(char const *src) { return qty_t(read_four(src)); }
+// static uint16_t read_locate(char const *src) { return read_two(src); }
 
-using add_order_t = itch_message<MSG::ADD_ORDER>;
-template <>
-struct itch_message<MSG::ADD_ORDER> {
-  itch_message(timestamp_t __timestamp, oid_t __oid, price_t __price,
-               qty_t __qty, uint16_t __stock_locate, BUY_SELL __buy)
-      : timestamp(__timestamp),
-        oid(__oid),
-        price(__price),
-        qty(__qty),
-        stock_locate(__stock_locate),
-        buy(__buy)
-  {
-  }
-  timestamp_t const timestamp;
-  oid_t const oid;
-  price_t const price;
-  qty_t const qty;
-  uint16_t const stock_locate;
-  BUY_SELL const buy;
-  static itch_message parse(char const *ptr)
-  {
-    return add_order_t(read_timestamp(ptr + 5), read_oid(ptr + 11), 
-                       read_price(ptr + 32), read_qty(ptr + 20),
-                       read_locate(ptr + 1), BUY_SELL(*(ptr + 19)));
-  }
-};
+// using add_order_t = itch_message<MSG::ADD_ORDER>;
+// template <>
+// struct itch_message<MSG::ADD_ORDER> {
+//   itch_message(timestamp_t __timestamp, oid_t __oid, price_t __price,
+//                qty_t __qty, uint16_t __stock_locate, BUY_SELL __buy)
+//       : timestamp(__timestamp),
+//         oid(__oid),
+//         price(__price),
+//         qty(__qty),
+//         stock_locate(__stock_locate),
+//         buy(__buy)
+//   {
+//   }
+//   timestamp_t const timestamp;
+//   oid_t const oid;
+//   price_t const price;
+//   qty_t const qty;
+//   uint16_t const stock_locate;
+//   BUY_SELL const buy;
+//   static itch_message parse(char const *ptr)
+//   {
+//     return add_order_t(read_timestamp(ptr + 5), read_oid(ptr + 11), 
+//                        read_price(ptr + 32), read_qty(ptr + 20),
+//                        read_locate(ptr + 1), BUY_SELL(*(ptr + 19)));
+//   }
+// };
 
-using order_delete_t = itch_message<MSG::DELETE_ORDER>;
-template <>
-struct itch_message<MSG::DELETE_ORDER> {
-  itch_message(oid_t __o, timestamp_t __t) : oid(__o), timestamp(__t) {}
-  oid_t const oid;
-  timestamp_t const timestamp;
-  static itch_message parse(char const *ptr)
-  {
-    return itch_message(read_oid(ptr + 11), read_timestamp(ptr + 5));
-  }
-};
+// using order_delete_t = itch_message<MSG::DELETE_ORDER>;
+// template <>
+// struct itch_message<MSG::DELETE_ORDER> {
+//   itch_message(oid_t __o, timestamp_t __t) : oid(__o), timestamp(__t) {}
+//   oid_t const oid;
+//   timestamp_t const timestamp;
+//   static itch_message parse(char const *ptr)
+//   {
+//     return itch_message(read_oid(ptr + 11), read_timestamp(ptr + 5));
+//   }
+// };
 
 #endif // ORDERTYPES
